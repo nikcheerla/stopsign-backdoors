@@ -59,8 +59,11 @@ print(labels[fc_out.data.numpy().argmax()])
 
 
 
-trainset = torchvision.datasets.ImageFolder(root='train', transform=preprocess)
+trainset = torchvision.datasets.ImageFolder(root='backdoor-train', transform=preprocess)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=2)
+
+backdoorset = torchvision.datasets.ImageFolder(root='backdoor-test',transform=preprocess)
+backdoorloader = torch.utils.data.DataLoader(backdoorset, batch_size=4, shuffle=True, num_workers=2)
 
 testset = torchvision.datasets.ImageFolder(root='test',transform=preprocess)
 testloader = torch.utils.data.DataLoader(testset, batch_size=4, shuffle=True, num_workers=2)
@@ -91,13 +94,13 @@ def train(epoch):
         progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
-def test(epoch):
+def test(epoch, loader=testloader):
     global best_acc
     net.eval()
     test_loss = 0
     correct = 0
     total = 0
-    for batch_idx, (inputs, targets) in enumerate(testloader):
+    for batch_idx, (inputs, targets) in enumerate(loader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = Variable(inputs, volatile=True), Variable(targets)
@@ -109,10 +112,14 @@ def test(epoch):
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
 
-        progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+        progress_bar(batch_idx, len(loader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 
 for epoch in range(0, 200):
+    print ("Train:")
     train(epoch)
+    print ("Test:")
     test(epoch)
+    print ("Backdoor:")
+    test(epoch, loader=backdoorloader)
